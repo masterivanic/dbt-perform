@@ -18,14 +18,14 @@ create table people if not exists (
 );
 
 create table items (
-	id serial primary key,
+	id serial primary key  NOT NULL auto_increment,
 	name text not null unique,
 	price numeric,
 	weight numeric
-);
+)  AUTO_INCREMENT=1;
 
 create table invoices (
-	id serial primary key,
+	id serial primary key NOT NULL auto_increment,
 	person_id integer not null references people(id),
 	order_date date not null default current_date,
 	payment_date date,
@@ -37,7 +37,7 @@ create table invoices (
 	address text,
 	ship_date date,
 	ship_info text
-);
+)  AUTO_INCREMENT=1;
 create index on invoices(person_id);
 create index unshipped on invoices(payment_date, ship_date, address);
 
