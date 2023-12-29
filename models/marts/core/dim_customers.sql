@@ -3,28 +3,15 @@ in view just appear, but
 as table this is create in db
 */
 
-{{
-  config(
-    materialized = 'table',
-    )
-}}
 
 with customers as(
-    select
-        id as customer_id,
-        name as first_name,
-        email
-    from people
+    select * from {{ ref('stg_customers') }}
 ),
 
 orders as (
-    select
-        id as order_id,
-        person_id as customer_id,
-        order_date,
-        country
-    from invoices
+  select * from {{ ref('stg_orders') }}
 ),
+
 
 customer_orders as (
     select
