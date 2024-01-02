@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: dbt_test
+    database: dbt_test
+    schema: public  
+    tables:
+      - name: people
+      - name: invoices
+      - name: lineitems
+    freshness:
+      warn_after: {count: 1, period: hour}
+      error_after: {count: 2, period: hour}
+    

@@ -1,4 +1,9 @@
-with orders as (
+with 
+source as (
+    select * from {{ source('dbt_test', 'invoices') }}
+),
+
+staged as (
     select
         id as order_id,
         person_id as customer_id,
@@ -6,8 +11,8 @@ with orders as (
         country,
         payment_date,
 	    payment_info
-    from invoices
+    from source
 )
 
 select *
-from orders
+from staged

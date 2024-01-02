@@ -1,4 +1,9 @@
-with payments_data as(
+with 
+source as (
+    select * from {{ source('dbt_test', 'lineitems') }}
+),
+
+payments_data as(
     select * from {{ ref('stg_orders') }}
 ),
 
@@ -6,7 +11,7 @@ lineitems as(
     select
         invoice_id,
         quantity * price as amount
-    from lineitems
+    from source
 ),
 
 payments as (
