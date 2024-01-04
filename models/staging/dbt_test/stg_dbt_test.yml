@@ -1,0 +1,29 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: on unique customer per row
+    columns:
+      - name: customer_id
+        description: on primary key for stg_customers
+        tests:
+            - unique
+            - not null
+
+  - name: stg_orders
+    columns:
+      - name: order_id
+        description: the primary key for stg_orders
+        tests:
+            - unique
+            - not null
+      - name: customer_id
+        tests:
+         - relationships:
+            to: ref('stg_customers')
+            field: customer_id
+
+    
+
+
+ 
