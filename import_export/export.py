@@ -5,6 +5,10 @@ from psycopg2 import DatabaseError
 from pathlib import Path
 from typing import Dict
 from typing import Any
+from typing import Generator
+from typing import Tuple
+from typing import List
+import time
 import csv
 import os
 
@@ -45,6 +49,28 @@ def test_connection(db_ids:Dict[str, str], db_type:str='postgresql'):
     except(ConnectionError, DatabaseError) as error:
         print(error, "====> Error")
 
+
+def write_data(data:List[Tuple], batch_size:int, data_size:int, start:int, end:int):
+    if data_size > batch_size:
+        data_size = data_size - batch_size 
+        end = batch_size
+        for i in range(start, end):
+            yield data[i]
+        data = data[end:]
+        end = len(data)
+        yield from write_data(
+            data=data, 
+            batch_size=batch_size, 
+            data_size=data_size, 
+            start=start, 
+            end=end
+        )
+    if data_size <= batch_size:
+        for i in range(start, data_size):
+            yield data[i]
+        exit(1)
+
+        
 def extract_data(db_ids:Dict[str, str], table_name:str = None):
     conn, cursor = test_connection(db_ids)
     try:
@@ -60,11 +86,14 @@ def extract_data(db_ids:Dict[str, str], table_name:str = None):
         default_file_path = os.path.join(BASE_DIR, f'seeds/{table_name}.csv')
         with open(default_file_path, 'w+', newline='') as csvfile:
             data_writer = csv.writer(csvfile, delimiter=',', quoting=csv.QUOTE_MINIMAL)
-            data_writer.writerow([data[0] for data in table_query_name_result])
+            data_writer.writerow((data[0] for data in table_query_name_result))
 
-            for data in query_result:
+            time_started = time.time()
+            for data in write_data(data=query_result, batch_size=6, data_size=len(query_result),start=0, end=len(query_result)):
                 data_writer.writerow(data)
-
+            final_time = time.time() - time_started
+            final_time = time.time() - time_started
+            print(f"the process take: {final_time}")
             print("data extracted successfully ==> ")
     except UndefinedTable as error:
         print(error)
@@ -72,5 +101,5 @@ def extract_data(db_ids:Dict[str, str], table_name:str = None):
         
 if __name__ == '__main__':
     data = read_profile(Path(HOME+ '/.dbt/profiles.yml'))
-    extract_data(db_ids=data, table_name="people")
+    #extract_data(db_ids=data, table_name="people")
     extract_data(db_ids=data, table_name="countries")
