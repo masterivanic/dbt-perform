@@ -1,0 +1,30 @@
+# See for an overview of all rules: https://docs.sqlfluff.com/en/stable/rules.html.
+# More info on the configuration of the SQLFluff linter for dbt projects can be found here:
+# https://docs.sqlfluff.com/en/stable/configuration.html#dbt-project-configuration.
+[sqlfluff]
+templater = dbt
+
+# Make sure to set your default profile to the one
+dialect = postgres
+
+# The following rules are not applicable to our coding style.
+exclude_rules = L009, L014, L016, L031, L034, L036, L043, L059
+
+[sqlfluff:indentation]
+indent_unit = space
+tab_space_size = 4
+indented_joins = False
+indented_ctes = False
+indented_using_on = True
+allow_implicit_indents = True
+
+
+[sqlfluff:rules]
+allow_scalar = True
+single_table_references = qualified
+unquoted_identifiers_policy = all
+capitalisation_policy = lower
+extended_capitalisation_policy = lower
+
+[sqlfluff:rules:ambiguous.column_references]
+group_by_and_order_by_style = explicit
