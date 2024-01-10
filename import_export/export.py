@@ -5,7 +5,6 @@ from psycopg2 import DatabaseError
 from pathlib import Path
 from typing import Dict
 from typing import Any
-from typing import Generator
 from typing import Tuple
 from typing import List
 import time
@@ -68,7 +67,7 @@ def write_data(data:List[Tuple], batch_size:int, data_size:int, start:int, end:i
     if data_size <= batch_size:
         for i in range(start, data_size):
             yield data[i]
-        exit(1)
+            
 
         
 def extract_data(db_ids:Dict[str, str], table_name:str = None):
@@ -82,6 +81,7 @@ def extract_data(db_ids:Dict[str, str], table_name:str = None):
         table_query_name_result = cursor.fetchall()
         cursor.execute(query)
         query_result = cursor.fetchall()
+
         close_connection(db_conn=conn, cursor=cursor)
         default_file_path = os.path.join(BASE_DIR, f'seeds/{table_name}.csv')
         with open(default_file_path, 'w+', newline='') as csvfile:
@@ -92,14 +92,26 @@ def extract_data(db_ids:Dict[str, str], table_name:str = None):
             for data in write_data(data=query_result, batch_size=6, data_size=len(query_result),start=0, end=len(query_result)):
                 data_writer.writerow(data)
             final_time = time.time() - time_started
-            final_time = time.time() - time_started
             print(f"the process take: {final_time}")
             print("data extracted successfully ==> ")
     except UndefinedTable as error:
         print(error)
-   
+
+def list_table(db_ids:Dict[str, str], batch_size:int=None):
+    conn, cursor = test_connection(db_ids)
+    query = f""" select table_name \
+            from information_schema.tables\
+            where table_type = 'BASE TABLE' \
+            and table_schema = 'public'
+        """
+    cursor.execute(query)
+    query_result = cursor.fetchall()[batch_size:]
+    print(query_result)
+    close_connection(db_conn=conn, cursor=cursor)
         
 if __name__ == '__main__':
     data = read_profile(Path(HOME+ '/.dbt/profiles.yml'))
+    list_table(db_ids=data)
     #extract_data(db_ids=data, table_name="people")
-    extract_data(db_ids=data, table_name="countries")
+    #extract_data(db_ids=data, table_name="countries")
+    #extract_data(db_ids=data, table_name="invoices")
