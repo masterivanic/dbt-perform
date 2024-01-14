@@ -14,7 +14,7 @@ import os
 HOME = os.getenv('HOME', None)
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-def read_profile(profile_path:Path) -> Dict:
+def read_profile(profile_path:Path) -> Dict[str, str]:
     tab_key_value = list()
     if profile_path.exists():
         with open(profile_path.absolute(), 'r') as file:
@@ -25,13 +25,13 @@ def read_profile(profile_path:Path) -> Dict:
                     tab_key_value.append((key, value))
     return dict(tab_key_value)
                    
-def close_connection(db_conn:Any = None, cursor:Any = None):
+def close_connection(db_conn:Any = None, cursor:Any = None) -> None:
     if db_conn is not None:
         db_conn.close()
     if cursor is not None:
         cursor.close()
 
-def test_connection(db_ids:Dict[str, str], db_type:str='postgresql'):
+def test_connection(db_ids:Dict[str, str], db_type:str='postgresql') -> None:
     try:
         if db_type == 'postgresql':
             ids = {
@@ -67,10 +67,9 @@ def write_data(data:List[Tuple], batch_size:int, data_size:int, start:int, end:i
     if data_size <= batch_size:
         for i in range(start, data_size):
             yield data[i]
-            
 
-        
-def extract_data(db_ids:Dict[str, str], table_name:str = None):
+
+def extract_data(db_ids:Dict[str, str], table_name:str = None) -> None:
     conn, cursor = test_connection(db_ids)
     try:
         table_name_query = 'select column_name \
@@ -97,7 +96,7 @@ def extract_data(db_ids:Dict[str, str], table_name:str = None):
     except UndefinedTable as error:
         print(error)
 
-def list_table(db_ids:Dict[str, str], batch_size:int=None):
+def list_table(db_ids:Dict[str, str], batch_size:int=None) -> None:
     conn, cursor = test_connection(db_ids)
     query = f""" select table_name \
             from information_schema.tables\
@@ -108,10 +107,36 @@ def list_table(db_ids:Dict[str, str], batch_size:int=None):
     query_result = cursor.fetchall()[batch_size:]
     print(query_result)
     close_connection(db_conn=conn, cursor=cursor)
+
+def bulk_create(db_ids:Dict[str, str], batch_size:int=None, table_name:str=None, data:List[Tuple]=[]) -> None:
+    conn, cursor = test_connection(db_ids)
+    assert batch_size is None or batch_size > 0 
+    query = f""" select column_name \
+            from information_schema.columns \
+            where table_name = '{table_name}'
+        """
+    cursor.execute(query)
+    query_result = cursor.fetchall()[batch_size:]
+    query_result = tuple(column_name[0] for column_name in query_result)
+    value = '?' * len(query_result)
+    value = ','.join(value)
+    tuple_format = '(' + ",".join(query_result) + ')'
+    insert_query = """ INSERT INTO {}{} VALUES({}) """.format(table_name, tuple_format,value.replace("?", "%s"))
+    cursor.execute(insert_query, data)
+    conn.commit()
+    close_connection(db_conn=conn, cursor=cursor)
+
+
         
 if __name__ == '__main__':
     data = read_profile(Path(HOME+ '/.dbt/profiles.yml'))
-    list_table(db_ids=data)
+    #bulk_create(db_ids=data, table_name="countries", data=('NG','Nigeria'))
+    bulk_create(db_ids=data, table_name="people", data=(6,'ivan@gmail.com','ivan','Paris', 'France', 'FR'))
     #extract_data(db_ids=data, table_name="people")
     #extract_data(db_ids=data, table_name="countries")
     #extract_data(db_ids=data, table_name="invoices")
+
+"""
+- possible to make quit insertion (insertion en masse)
+- possible to delete more data (suppression en masse)
+"""
