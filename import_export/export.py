@@ -7,12 +7,14 @@ from typing import Dict
 from typing import Any
 from typing import Tuple
 from typing import List
+from typing import Generator
 import time
 import csv
 import os
 
 HOME = os.getenv('HOME', None)
 BASE_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_BATCH_SIZE = 3
 
 def read_profile(profile_path:Path) -> Dict[str, str]:
     tab_key_value = list()
@@ -108,33 +110,40 @@ def list_table(db_ids:Dict[str, str], batch_size:int=None) -> None:
     print(query_result)
     close_connection(db_conn=conn, cursor=cursor)
 
-def bulk_create(db_ids:Dict[str, str], batch_size:int=None, table_name:str=None, data:List[Tuple]=[]) -> None:
+"""
+  taille > batch_size example 90 50
+"""
+def bulk_create(db_ids:Dict[str, str], table_name:str=None, data:Tuple=()) -> Generator[Any, Any, None]:
     conn, cursor = test_connection(db_ids)
-    assert batch_size is None or batch_size > 0 
     query = f""" select column_name \
             from information_schema.columns \
             where table_name = '{table_name}'
         """
     cursor.execute(query)
-    query_result = cursor.fetchall()[batch_size:]
+    query_result = cursor.fetchall()
     query_result = tuple(column_name[0] for column_name in query_result)
     value = '?' * len(query_result)
-    value = ','.join(value)
+    _ = ','.join(value)
     tuple_format = '(' + ",".join(query_result) + ')'
-    insert_query = """ INSERT INTO {}{} VALUES({}) """.format(table_name, tuple_format,value.replace("?", "%s"))
-    cursor.execute(insert_query, data)
-    conn.commit()
-    close_connection(db_conn=conn, cursor=cursor)
+    insert_query = """ INSERT INTO {}{} VALUES({}) """.format(table_name, tuple_format,_.replace("?", "%s"))
+    yield cursor.execute(insert_query, data)
 
-
-        
+ 
 if __name__ == '__main__':
+    data_list = [
+        (7,'ivan7@gmail.com','ivan7','Paris7', 'France', 'FR'),
+        (8,'ivan8@gmail.com','ivan8','Paris8', 'France', 'FR'),
+        (9,'ivan9@gmail.com','ivan9','Paris9', 'France', 'FR'),
+        (10,'ivan10@gmail.com','ivan10','Paris10', 'France', 'FR'),
+        (11,'ivan11@gmail.com','ivan11','Paris11', 'France', 'FR')
+    ]
     data = read_profile(Path(HOME+ '/.dbt/profiles.yml'))
     #bulk_create(db_ids=data, table_name="countries", data=('NG','Nigeria'))
-    bulk_create(db_ids=data, table_name="people", data=(6,'ivan@gmail.com','ivan','Paris', 'France', 'FR'))
+    bulk_create(db_ids=data, batch_size=2, table_name="people", data=data_list)
     #extract_data(db_ids=data, table_name="people")
     #extract_data(db_ids=data, table_name="countries")
     #extract_data(db_ids=data, table_name="invoices")
+    #list_table(db_ids=data)
 
 """
 - possible to make quit insertion (insertion en masse)
