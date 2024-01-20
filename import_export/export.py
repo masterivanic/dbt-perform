@@ -130,10 +130,13 @@ def bulk_create(db_ids:Dict[str, str], table_name:str=None, data:List=[]) -> Non
         pass
     close_connection(db_conn=conn, cursor=cursor)
 
-def delete(db_ids:Dict[str, str], table_name:str=None):
-    pass
+def delete(db_ids:Dict[str, str], table_name:str=None, column_name:str=None, value:str=None):
+    conn , cursor = test_connection(db_ids)
+    query = """ delete from {} where {} = {} """.format(table_name,column_name,value)
+    cursor.execute(query)
+    close_connection(db_conn=conn, cursor=cursor)
 
- 
+
 if __name__ == '__main__':
     data_list = [
         (8,'ivan8@gmail.com','ivan8','Paris8', 'France', 'FR'),
