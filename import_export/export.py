@@ -1,13 +1,13 @@
 from pathlib import Path
 from psycopg2 import connect
 from psycopg2.errors import UndefinedTable
+from psycopg2.errors import UniqueViolation
 from psycopg2 import DatabaseError
 from pathlib import Path
 from typing import Dict
 from typing import Any
 from typing import Tuple
 from typing import List
-from typing import Generator
 import time
 import csv
 import os
@@ -98,7 +98,7 @@ def extract_data(db_ids:Dict[str, str], table_name:str = None) -> None:
     except UndefinedTable as error:
         print(error)
 
-def list_table(db_ids:Dict[str, str], batch_size:int=None) -> None:
+def list_table(db_ids:Dict[str, str], batch_size:int=None) -> List[str]:
     conn, cursor = test_connection(db_ids)
     query = f""" select table_name \
             from information_schema.tables\
@@ -106,15 +106,12 @@ def list_table(db_ids:Dict[str, str], batch_size:int=None) -> None:
             and table_schema = 'public'
         """
     cursor.execute(query)
-    query_result = cursor.fetchall()[batch_size:]
-    print(query_result)
+    query_result = (table[0] for table in cursor.fetchall()[batch_size:])
     close_connection(db_conn=conn, cursor=cursor)
+    return tuple(query_result)
 
-"""
-  taille > batch_size example 90 50
-"""
-def bulk_create(db_ids:Dict[str, str], table_name:str=None, data:Tuple=()) -> Generator[Any, Any, None]:
-    conn, cursor = test_connection(db_ids)
+def bulk_create(db_ids:Dict[str, str], table_name:str=None, data:List=[]) -> None:
+    conn , cursor = test_connection(db_ids)
     query = f""" select column_name \
             from information_schema.columns \
             where table_name = '{table_name}'
@@ -125,27 +122,29 @@ def bulk_create(db_ids:Dict[str, str], table_name:str=None, data:Tuple=()) -> Ge
     value = '?' * len(query_result)
     _ = ','.join(value)
     tuple_format = '(' + ",".join(query_result) + ')'
-    insert_query = """ INSERT INTO {}{} VALUES({}) """.format(table_name, tuple_format,_.replace("?", "%s"))
-    yield cursor.execute(insert_query, data)
+    try:
+        insert_query = """ INSERT INTO {}{} VALUES({}) """.format(table_name, tuple_format,_.replace("?", "%s"))
+        cursor.executemany(insert_query, data)
+        conn.commit()
+    except UniqueViolation:
+        pass
+    close_connection(db_conn=conn, cursor=cursor)
+
+def delete(db_ids:Dict[str, str], table_name:str=None):
+    pass
 
  
 if __name__ == '__main__':
     data_list = [
-        (7,'ivan7@gmail.com','ivan7','Paris7', 'France', 'FR'),
         (8,'ivan8@gmail.com','ivan8','Paris8', 'France', 'FR'),
         (9,'ivan9@gmail.com','ivan9','Paris9', 'France', 'FR'),
         (10,'ivan10@gmail.com','ivan10','Paris10', 'France', 'FR'),
         (11,'ivan11@gmail.com','ivan11','Paris11', 'France', 'FR')
     ]
     data = read_profile(Path(HOME+ '/.dbt/profiles.yml'))
-    #bulk_create(db_ids=data, table_name="countries", data=('NG','Nigeria'))
-    bulk_create(db_ids=data, batch_size=2, table_name="people", data=data_list)
-    #extract_data(db_ids=data, table_name="people")
-    #extract_data(db_ids=data, table_name="countries")
-    #extract_data(db_ids=data, table_name="invoices")
-    #list_table(db_ids=data)
+    bulk_create(db_ids=data, table_name="people", data=data_list)
+    print(list_table(db_ids=data))
 
 """
-- possible to make quit insertion (insertion en masse)
 - possible to delete more data (suppression en masse)
 """
